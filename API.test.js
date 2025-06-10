@@ -1,139 +1,187 @@
-const request = require("supertest");
+const chai = require("chai");
+const faker = require("@faker-js/faker").faker;
+const Ajv = require("ajv");
+const ajvFormats = require("ajv-formats");
+const {
+  bookingId,
+  bookingSchema,
+  createBookingShema,
+} = require("./shemaForValidate");
+const sendRequest = require("./sendRequest");
 
-const URL = "https://restful-booker.herokuapp.com";
+const ajv = new Ajv();
+ajvFormats(ajv);
 
-const agent = request(URL);
+function validateJson(schema, data) {
+  const validate = ajv.compile(schema);
+  return validate(data);
+}
+
+const expect = chai.expect;
+
+let id;
 
 describe("API Book", () => {
   it("Проверка авторизации и получения токена", async () => {
-    try {
-      const response = await agent
-        .post("/auth")
-        .send({
-          username: "admin",
-          password: "password123",
-        })
-        .expect(200);
-      // console.log(response.body);
-    } catch (error) {
-      console.error("Ошибка:", error);
-    }
+    const response = await sendRequest("post", "/auth", {
+      username: "admin",
+      password: "password123",
+    });
+    expect(response.status).to.equal(200);
   });
 
-  it("Получение массива ID бронь книг", async () => {
-    try {
-      const response = await agent.get("/booking").expect(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      const data = response.body;
-      data.forEach((item) => {
-        expect(item).toHaveProperty("bookingid");
-        expect(typeof item.bookingid).toBe("number");
-      });
-    } catch (error) {
-      console.error("Ошибка:", error);
-    }
+  it("Ошибка авторизации с неверными данными", async () => {
+    const response = await sendRequest("post", "/auth", {
+      username: "User",
+      password: "Password",
+    });
+    expect(response.status).to.equal(401);
   });
 
-  it("Получение конкретной брони книги", async () => {
-    try {
-      const response = await agent
-        .get("/booking/456")
-        .set("Accept", "application/json")
-        .expect(200);
-      expect(typeof response.body).toBe("object");
-    } catch (error) {
-      console.error("Ошибка:", error);
-    }
+  it("Получение массива ID бронь", async () => {
+    const res = await sendRequest("get", "/booking");
+    expect(res.status).to.equal(200);
+    const isValid = validateJson(bookingId, res.body);
+    expect(isValid).to.be.true;
   });
 
-  it("Создание бронирования книги", async () => {
-    try {
-      const response = await agent
-        .post("/booking")
-        .set("Accept", "application/json")
-        .set("Content-Type", "application/json")
-        .send({
-          firstname: "Rezeda",
-          lastname: "Poludova",
-          totalprice: 11111111,
-          depositpaid: true,
-          bookingdates: {
-            checkin: "2018-01-01",
-            checkout: "2019-01-01",
-          },
-          additionalneeds: "Breakfast",
-        })
-        .expect(200);
-      // console.log(response.body);
-    } catch (error) {
-      console.error("Ошибка:", error);
-    }
+  it("Запрос несуществующего ID брони", async () => {
+    const res = await sendRequest("get", "/booking/99999");
+    expect(res.status).to.equal(404);
   });
 
-  it("Изменение бронирования книги полное PUT", async () => {
-    try {
-      const response = await agent
-        .put("/booking/1488")
-        .set("Accept", "application/json")
-        .set("Content-Type", "application/json")
-        .set("Cookie", "token=abc123")
-        .set("Authorization", "Basic YWRtaW46cGFzc3dvcmQxMjM=")
-        .send({
-          firstname: "NeRezeda",
-          lastname: "NePoludova",
-          totalprice: 2222222,
-          depositpaid: true,
-          bookingdates: {
-            checkin: "2018-01-01",
-            checkout: "2019-01-01",
-          },
-          additionalneeds: "Breakfast",
-        })
-        .expect(200);
-      //console.log(response.body);
-    } catch (error) {
-      console.error("Ошибка:", error);
-    }
+  it("Получение конкретной брони", async () => {
+    const res = await sendRequest("get", `/booking/${id}`, {
+      Accept: "application/json",
+    });
+    expect(res.status).to.equal(200);
+
+    const isValid = validateJson(bookingSchema, res.body);
+    expect(isValid).to.be.true;
   });
 
-  it("Изменение бронирования книги частичное PATCH", async () => {
-    try {
-      const response = await agent
-        .patch("/booking/1")
-        .set("Accept", "application/json")
-        .set("Content-Type", "application/json")
-        .set("Cookie", "token=abc123")
-        .set("Authorization", "Basic YWRtaW46cGFzc3dvcmQxMjM=")
-        .send({
-          firstname: "Rezeda",
-          lastname: "Poludova",
-        })
-        .expect(200);
-      //console.log(response.body);
-    } catch (error) {
-      console.error("Ошибка:", error);
-    }
+  it("Создание бронирования", async () => {
+    const res = await sendRequest(
+      "post",
+      "/booking",
+      {
+        firstname: faker.person.firstName(),
+        lastname: faker.person.lastName(),
+        totalprice: faker.finance.amount(),
+        depositpaid: faker.datatype.boolean(),
+        bookingdates: {
+          checkin: faker.date.past().toISOString().split("T")[0],
+          checkout: faker.date.future().toISOString().split("T")[0],
+        },
+        additionalneeds: faker.lorem.word(),
+      },
+      { Accept: "application/json", "Content-Type": "application/json" }
+    );
+    expect(res.status).to.equal(200);
+    const isValid = validateJson(createBookingShema, res.body);
+    expect(isValid).to.be.true;
+    id = res.body.bookingid;
   });
 
-  it("Удаление бронирования книги", async () => {
-    try {
-      const response = await agent
-        .delete("/booking/46")
-        .set("Cookie", "token=abc123")
-        .set("Authorization", "Basic YWRtaW46cGFzc3dvcmQxMjM=")
-        .expect(201);
-    } catch (error) {
-      console.error("Ошибка:", error);
-    }
+  it("Попытка создать бронь с отсутствующими обязательными полями", async () => {
+    const res = await sendRequest(
+      "post",
+      "/booking",
+      { firstname: faker.person.firstName() },
+      { Accept: "application/json", "Content-Type": "application/json" }
+    );
+    expect(res.status).to.equal(400);
+  });
+
+  it("Изменение бронирование полное PUT", async () => {
+    const res = await sendRequest(
+      "put",
+      `/booking/${id}`,
+      {
+        firstname: faker.person.firstName(),
+        lastname: faker.person.lastName(),
+        totalprice: faker.finance.amount(),
+        depositpaid: faker.datatype.boolean(),
+        bookingdates: {
+          checkin: faker.date.past().toISOString().split("T")[0],
+          checkout: faker.date.future().toISOString().split("T")[0],
+        },
+        additionalneeds: faker.lorem.word(),
+      },
+      {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Cookie: "token=abc123",
+        Authorization: "Basic YWRtaW46cGFzc3dvcmQxMjM=",
+      }
+    );
+    expect(res.status).to.equal(200);
+    const isValid = validateJson(bookingSchema, res.body);
+    expect(isValid).to.be.true;
+  });
+
+  it("Изменение несуществующего бронирования полное PUT", async () => {
+    const res = await sendRequest(
+      "put",
+      "/booking/99999",
+      {
+        firstname: faker.person.firstName(),
+        lastname: faker.person.lastName(),
+        totalprice: faker.finance.amount(),
+        depositpaid: faker.datatype.boolean(),
+        bookingdates: {
+          checkin: faker.date.past().toISOString().split("T")[0],
+          checkout: faker.date.future().toISOString().split("T")[0],
+        },
+        additionalneeds: faker.lorem.word(),
+      },
+      {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Cookie: "token=abc123",
+        Authorization: "Basic YWRtaW46cGFzc3dvcmQxMjM=",
+      }
+    );
+    expect(res.status).to.equal(405);
+  });
+
+  it("Изменение бронирования частичное PATCH", async () => {
+    const res = await sendRequest(
+      "patch",
+      `/booking/${id}`,
+      {
+        firstname: faker.person.firstName(),
+        lastname: faker.person.lastName(),
+      },
+      {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Cookie: "token=abc123",
+        Authorization: "Basic YWRtaW46cGFzc3dvcmQxMjM=",
+      }
+    );
+    expect(res.status).to.equal(200);
+    const isValid = validateJson(bookingSchema, res.body);
+    expect(isValid).to.be.true;
+  });
+
+  it("Удаление бронирования", async () => {
+    const res = await sendRequest("delete", `/booking/${id}`, {
+      Cookie: "token=<token_value>",
+      Authorization: "Basic YWRtaW46cGFzc3dvcmQxMjM=",
+    });
+    expect(res.status).to.equal(201);
+  });
+
+  it("Удаление несуществующей брони", async () => {
+    const res = await sendRequest("delete", "/booking/99999");
+    expect(res.status).to.equal(403);
   });
 });
 
 describe("Пинг", () => {
   it("Проверка работоспособности", async () => {
-    try {
-      const response = await agent.get("/ping").expect(201);
-    } catch (error) {
-      console.error("Ошибка:", error);
-    }
+    const res = await sendRequest("get", "/ping");
+    expect(res.status).to.equal(201);
   });
 });
