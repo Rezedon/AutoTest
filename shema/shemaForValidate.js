@@ -1,4 +1,4 @@
-const bookingId = {
+const bookingIdShema = {
   type: "array",
   items: {
     type: "object",
@@ -70,4 +70,4 @@ const bookingSchema = {
   ],
 };
 
-module.exports = { bookingId, bookingSchema, createBookingShema };
+module.exports = { bookingIdShema, bookingSchema, createBookingShema };
