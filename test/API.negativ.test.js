@@ -3,7 +3,7 @@ const faker = require("@faker-js/faker").faker;
 const Ajv = require("ajv");
 const ajvFormats = require("ajv-formats");
 
-const sendRequest = require("./helper/sendRequest");
+const sendRequest = require("../helper/sendRequest");
 
 const ajv = new Ajv();
 ajvFormats(ajv);
@@ -32,7 +32,7 @@ describe("API Negative Book", () => {
       { Accept: "application/json", "Content-Type": "application/json" }
     );
     expect(res.status).to.equal(500);
-  });
+  }, 10000);
 
   it("Изменение несуществующего бронирования полное PUT", async () => {
     const res = await sendRequest(
@@ -57,7 +57,7 @@ describe("API Negative Book", () => {
       }
     );
     expect(res.status).to.equal(405);
-  });
+  }, 10000);
 
   it("Удаление несуществующей брони", async () => {
     const res = await sendRequest("delete", "/booking/99999");
@@ -65,9 +65,7 @@ describe("API Negative Book", () => {
   });
 });
 
-describe("Пинг", () => {
-  it("Проверка работоспособности", async () => {
-    const res = await sendRequest("get", "/ping");
-    expect(res.status).to.equal(201);
-  });
+it("Проверка работоспособности", async () => {
+  const res = await sendRequest("get", "/ping");
+  expect(res.status).to.equal(201);
 });

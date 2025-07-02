@@ -6,7 +6,7 @@ const URL = "https://restful-booker.herokuapp.com";
 const agent = request(URL);
 
 /**
- *
+ * Универсальная функция для отправки запросов
  * @param {"get"|"post"|"put"|"delete"|"patch"} method
  * @param {string} url
  * @param {object|null} body
