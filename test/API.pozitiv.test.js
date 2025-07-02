@@ -38,6 +38,7 @@ describe("API Booking", () => {
   });
 
   let createdBookingId;
+  let existingLastname;
   /**
      * функция создает перед каждым тестом новое бронирование
      * @param {"get"|"post"|"put"|"delete"|"patch"} method - метод запроса
@@ -64,6 +65,7 @@ describe("API Booking", () => {
       COMMON_HEADERS
     );
     createdBookingId = createRes.body.bookingid;
+    existingLastname = testBookingData.lastname;
   });
   /**
    * функция удаляет бронь после каждого теста
@@ -133,6 +135,7 @@ describe("API Booking", () => {
     expect(res.status).to.equal(200);
     expect(validateJson(bookingSchema, res.body)).to.be.true;
     expect(res.body.firstname).to.equal("PatchedName");
+    expect(res.body.lastname).to.equal(existingLastname);
   });
 
   it("Удаление бронирования", async () => {
@@ -155,6 +158,8 @@ describe("API Booking", () => {
         Authorization: "Basic YWRtaW46cGFzc3dvcmQxMjM=",
       }
     );
+    expect(deleteRes.status).to.equal(201);
+    expect(deleteRes.body).to.be.empty;
 
     expect(deleteRes.status).to.equal(201);
 
