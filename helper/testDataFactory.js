@@ -1,5 +1,19 @@
 const faker = require("@faker-js/faker").faker;
 
+/**
+ * Функция генерирует тестовые данные для запросов
+ * @returns - возвращает объект вида {
+ *  firstname - имя пользователя,
+ * lastname - фамилия пользователя,
+ * totalprice - максимальная сумма,
+ * depositpaid - депозит,
+ * bookingdates - даты бронирования {
+ *  checkin - дата заезда,
+ *  checkout - дата выезда,
+ *},
+ *additionalneeds - дополнительные потребности,}
+ */
+
 module.exports.generateTestBooking = () => ({
   firstname: faker.person.firstName(),
   lastname: faker.person.lastName(),

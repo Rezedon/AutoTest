@@ -1,4 +1,3 @@
-// Вспомогательная функция для создания брони
 const chai = require("chai");
 const expect = chai.expect;
 const faker = require("@faker-js/faker").faker;
@@ -8,6 +7,10 @@ const { BASE_URL, COMMON_HEADERS } = require("./const");
 const validateJson = require("../shema/validationJson");
 const { generateTestBooking } = require("./testDataFactory");
 
+/**
+ * функция создает новое бронирование
+ * @returns возвращает ID созданного бронирования
+ */
 async function createBooking() {
   const bookingData = generateTestBooking();
 

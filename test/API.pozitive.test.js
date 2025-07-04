@@ -1,5 +1,3 @@
-//ts-check
-
 const chai = require("chai");
 const validateJson = require("../shema/validationJson.js");
 const { generateTestBooking } = require("../helper/testDataFactory.js");
@@ -7,6 +5,7 @@ const {
   BASE_URL,
   COMMON_HEADERS,
   AUTH_HEADERS,
+  updatedData,
 } = require("../helper/const.js");
 const sendRequest = require("../helper/sendRequest.js");
 const bookingIdShema = require("../shema/shemaForValidate/bookingIdShema.js");
@@ -18,15 +17,6 @@ describe("API Booking", () => {
   let authToken;
   let testBookingData;
 
-  /**
-   * функция создает перед тестом новый токен авторизации
-   * @param {"get"|"post"|"put"|"delete"|"patch"} method - метод запроса
-   * @param {string} url - url запроса
-   * @param {object|null} body - объект вида {
-   * username - имя пользователя
-   * password - пароль пользователя
-   * }
-   */
   beforeAll(async () => {
     const authRes = await sendRequest("post", "/auth", {
       username: "admin",
@@ -38,25 +28,7 @@ describe("API Booking", () => {
   });
 
   let createdBookingId;
-  let existingLastname;
-  /**
-     * функция создает перед каждым тестом новое бронирование
-     * @param {"get"|"post"|"put"|"delete"|"patch"} method - метод запроса
-     * @param {string} url - url запроса
-     * @param {object|null} body - объект вида {
-     * firstname {string} - имя пользователя
-     * lastname {string} - фамилия пользователя
-     * totalprice {number} - общая цена
-     * depositpaid {boolean} - оплата депозита
-     * bookingdates {string} - даты бронирования : {
-     * checkin {string} - дата заезда
-     * checkout {string} - дата выезда}
-     * additionalneeds {string} - дополнительные потребности
-     * }
-     * @param {object|null} headers - объект вида {
-     *   Accept: "application/json",
-  "Content-Type": "application/json",}
-     */
+
   beforeEach(async () => {
     const createRes = await sendRequest(
       "post",
@@ -65,21 +37,9 @@ describe("API Booking", () => {
       COMMON_HEADERS
     );
     createdBookingId = createRes.body.bookingid;
-    existingLastname = testBookingData.lastname;
   });
-  /**
-   * функция удаляет бронь после каждого теста
-   * @param {"get"|"post"|"put"|"delete"|"patch"} method - метод запроса
-   * @param {string} url - url запроса
-   * @param {object|null} headers - объект вида {
-   * Accept - заголовок для передачи серферу формата данных,
-   * Content-Type -  заголовок указывает серверу, в каком формате данные отправлены в теле запроса.,
-   * Cookie - передает данные аутентификации,
-   * Authorization - передает данные аутентификации
-   * }
-   */
+
   afterEach(async () => {
-    // Удаляем бронь после каждого теста
     await sendRequest("delete", `${BASE_URL}/${createdBookingId}`, null, {
       ...AUTH_HEADERS,
       Authorization: `Bearer ${authToken}`,
@@ -88,14 +48,11 @@ describe("API Booking", () => {
 
   it("Получение массива ID броней", async () => {
     const res = await sendRequest("get", BASE_URL, COMMON_HEADERS);
-
     expect(res.status).to.equal(200);
+    const bookingIdsArray = res.body.map((booking) => booking.bookingid);
     expect(validateJson(bookingIdShema, res.body)).to.be.true;
+    expect(bookingIdsArray).to.include(createdBookingId);
   }, 10000);
-  //смысл наличия отдельного теста "Создание и проверка бронирования", это можно проверить в beforeEach
-  // it("Создание и проверка бронирования", async () => {
-  //   expect(createdBookingId).to.be.a("number");
-  // });
 
   it("Получение конкретной брони", async () => {
     const res = await sendRequest(
@@ -106,13 +63,10 @@ describe("API Booking", () => {
     );
     expect(res.status).to.equal(200);
     expect(validateJson(bookingSchema, res.body)).to.be.true;
+    expect(res.body).to.deep.equal(testBookingData);
   });
 
   it("Полное обновление брони (PUT)", async () => {
-    const updatedData = {
-      ...testBookingData,
-      firstname: "UpdatedName",
-    };
     const res = await sendRequest(
       "put",
       `${BASE_URL}/${createdBookingId}`,
@@ -121,25 +75,27 @@ describe("API Booking", () => {
     );
     expect(res.status).to.equal(200);
     expect(validateJson(bookingSchema, res.body)).to.be.true;
-    expect(res.body.firstname).to.equal("UpdatedName");
+    expect(res.body).to.deep.equal(updatedData);
   });
 
   it("Частичное обновление брони (PATCH)", async () => {
-    const patchData = { firstname: "PatchedName" };
     const res = await sendRequest(
       "patch",
       `${BASE_URL}/${createdBookingId}`,
-      patchData,
+      { firstname: "PatchedName" },
       AUTH_HEADERS
     );
     expect(res.status).to.equal(200);
     expect(validateJson(bookingSchema, res.body)).to.be.true;
     expect(res.body.firstname).to.equal("PatchedName");
-    expect(res.body.lastname).to.equal(existingLastname);
+    expect(res.body.lastname).to.equal(testBookingData.lastname);
+    expect(res.body.totalprice).to.equal(testBookingData.totalprice);
+    expect(res.body.depositpaid).to.equal(testBookingData.depositpaid);
+    expect(res.body.bookingdates).to.deep.equal(testBookingData.bookingdates);
+    expect(res.body.additionalneeds).to.equal(testBookingData.additionalneeds);
   });
 
   it("Удаление бронирования", async () => {
-    // Создаем временную бронь
     const createRes = await sendRequest(
       "post",
       BASE_URL,
@@ -148,7 +104,6 @@ describe("API Booking", () => {
     );
     const tempBookingId = createRes.body.bookingid;
 
-    // Удаляем
     const deleteRes = await sendRequest(
       "delete",
       `${BASE_URL}/${tempBookingId}`,
@@ -163,7 +118,6 @@ describe("API Booking", () => {
 
     expect(deleteRes.status).to.equal(201);
 
-    // Проверяем что бронь удалена
     const getRes = await sendRequest(
       "get",
       `${BASE_URL}/${tempBookingId}`,

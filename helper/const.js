@@ -26,7 +26,7 @@ const bookingData = {
 const updatedData = {
   firstname: faker.person.firstName(),
   lastname: faker.person.lastName(),
-  totalprice: faker.finance.amount(),
+  totalprice: Math.floor(Math.random() * 10000),
   depositpaid: faker.datatype.boolean(),
   bookingdates: {
     checkin: faker.date.past().toISOString().split("T")[0],

@@ -2,6 +2,7 @@ const chai = require("chai");
 const faker = require("@faker-js/faker").faker;
 const Ajv = require("ajv");
 const ajvFormats = require("ajv-formats");
+const { generateTestBooking } = require("../helper/testDataFactory.js");
 
 const sendRequest = require("../helper/sendRequest");
 
@@ -9,6 +10,7 @@ const ajv = new Ajv();
 ajvFormats(ajv);
 
 const expect = chai.expect;
+const testBookingData = generateTestBooking();
 
 describe("API Negative Book", () => {
   it("Ошибка авторизации с неверными данными", async () => {
@@ -35,27 +37,12 @@ describe("API Negative Book", () => {
   }, 10000);
 
   it("Изменение несуществующего бронирования полное PUT", async () => {
-    const res = await sendRequest(
-      "put",
-      "/booking/99999",
-      {
-        firstname: faker.person.firstName(),
-        lastname: faker.person.lastName(),
-        totalprice: faker.finance.amount(),
-        depositpaid: faker.datatype.boolean(),
-        bookingdates: {
-          checkin: faker.date.past().toISOString().split("T")[0],
-          checkout: faker.date.future().toISOString().split("T")[0],
-        },
-        additionalneeds: faker.lorem.word(),
-      },
-      {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Cookie: "token=abc123",
-        Authorization: "Basic YWRtaW46cGFzc3dvcmQxMjM=",
-      }
-    );
+    const res = await sendRequest("put", "/booking/99999", testBookingData, {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Cookie: "token=abc123",
+      Authorization: "Basic YWRtaW46cGFzc3dvcmQxMjM=",
+    });
     expect(res.status).to.equal(405);
   }, 10000);
 
